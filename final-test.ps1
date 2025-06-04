@@ -44,8 +44,7 @@ function Test-ServiceCompilation {
         } else {
             Write-Host "  ❌ pom.xml missing" -ForegroundColor Red
             return $false
-        }
-          # Check key packages
+        }        # Check key packages
         $packages = @("controller", "service", "entity", "repository")
         foreach ($pkg in $packages) {
             $pkgPath = "src/main/java/com/springmon/*/"
