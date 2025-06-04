@@ -53,6 +53,7 @@ jobs:
             gateway-service/src/main/resources/application.properties
             auth-service/src/main/resources/application*.properties
             user-service/src/main/resources/application.properties
+            .env
           retention-days: 1
 
   deploy:
@@ -73,19 +74,46 @@ jobs:
         run: |
           echo "🔑 Setting up SSH key..."
           
+          # Debug: Check if secrets are set
+          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+            echo "❌ DEPLOY_KEY secret is not set!"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.DEPLOY_HOST }}" ]; then
+            echo "❌ DEPLOY_HOST secret is not set!"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.DEPLOY_USER }}" ]; then
+            echo "❌ DEPLOY_USER secret is not set!"
+            exit 1
+          fi
+          
+          echo "✅ All secrets are configured"
+          
           # Create SSH key file with proper format and remove Windows line endings
-          echo "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' > key.pem
+          echo "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' | sed 's/\\n/\n/g' > key.pem
           chmod 600 key.pem
+          
+          # Debug: Check key file size and first/last lines
+          echo "🔍 SSH key file size: $(wc -c < key.pem) bytes"
+          echo "🔍 First line: $(head -n1 key.pem)"
+          echo "🔍 Last line: $(tail -n1 key.pem)"
           
           # Validate key format
           if ! ssh-keygen -l -f key.pem > /dev/null 2>&1; then
             echo "❌ Invalid SSH key format in secrets.DEPLOY_KEY"
+            echo "Key must start with '-----BEGIN OPENSSH PRIVATE KEY-----'"
+            echo "Key must end with '-----END OPENSSH PRIVATE KEY-----'"
             echo "Make sure the SSH private key is properly formatted"
             exit 1
           fi
           
+          echo "✅ SSH key format is valid"
+          
           # Test SSH connection with detailed output
-          echo "🔍 Testing SSH connection to ${{ secrets.DEPLOY_HOST }}..."
+          echo "🔍 Testing SSH connection to ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}..."
           ssh -i key.pem -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "echo 'SSH connection successful'; whoami; pwd"
           
       - name: 🏗️ Prepare VM Environment
@@ -120,6 +148,7 @@ jobs:
           
           # Transfer docker-compose first
           scp -i key.pem -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
+          scp -i key.pem -o StrictHostKeyChecking=no .env ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
           
           # Transfer each service directory
           scp -i key.pem -o StrictHostKeyChecking=no -r gateway-service ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
