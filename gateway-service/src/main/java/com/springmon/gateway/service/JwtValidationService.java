@@ -20,18 +20,17 @@ public class JwtValidationService {
 
     /**
      * Valida il token JWT localmente nel gateway
-     */
-    public boolean validateToken(String token) {
+     */    public boolean validateToken(String token) {
         try {
             SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
             
-            Jws<Claims> claimsJws = Jwts.parserBuilder()
-                    .setSigningKey(key)
+            Jws<Claims> claimsJws = Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
             
             // Controlla scadenza
-            Date expiration = claimsJws.getBody().getExpiration();
+            Date expiration = claimsJws.getPayload().getExpiration();
             return expiration.after(new Date());
             
         } catch (JwtException | IllegalArgumentException e) {
@@ -41,16 +40,15 @@ public class JwtValidationService {
 
     /**
      * Estrae l'username dal token JWT
-     */
-    public String getUsernameFromToken(String token) {
+     */    public String getUsernameFromToken(String token) {
         try {
             SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
             
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(key)
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(token)
-                    .getBody();
+                    .parseSignedClaims(token)
+                    .getPayload();
             
             return claims.getSubject();
             
@@ -61,16 +59,15 @@ public class JwtValidationService {
 
     /**
      * Estrae i ruoli dal token JWT
-     */
-    public String getRolesFromToken(String token) {
+     */    public String getRolesFromToken(String token) {
         try {
             SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
             
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(key)
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(token)
-                    .getBody();
+                    .parseSignedClaims(token)
+                    .getPayload();
             
             return claims.get("roles", String.class);
             
@@ -81,16 +78,15 @@ public class JwtValidationService {
 
     /**
      * Verifica se il token è scaduto
-     */
-    public boolean isTokenExpired(String token) {
+     */    public boolean isTokenExpired(String token) {
         try {
             SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
             
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(key)
+            Claims claims = Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(token)
-                    .getBody();
+                    .parseSignedClaims(token)
+                    .getPayload();
             
             Date expiration = claims.getExpiration();
             return expiration.before(new Date());

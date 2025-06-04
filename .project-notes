@@ -1,0 +1,45 @@
+# SpringMon Microservices
+# IDE Configuration for Multi-Module Maven Project
+
+## Project Structure
+This is a multi-module Maven project with the following modules:
+- auth-service (Port 8082) - Authentication and JWT management
+- user-service (Port 8081) - User CRUD operations  
+- gateway-service (Port 8080) - API Gateway and routing
+
+## IDE Setup Instructions
+
+### IntelliJ IDEA
+1. File → Open → Select springmon-microservices folder
+2. Import as Maven project
+3. Enable "Auto-import" for Maven projects
+4. Set Project SDK to Java 17+
+
+### Visual Studio Code
+1. Open springmon-microservices folder
+2. Install extensions:
+   - Extension Pack for Java
+   - Spring Boot Extension Pack
+3. Reload window to detect Maven modules
+
+### Eclipse/STS
+1. File → Import → Existing Maven Projects
+2. Root Directory: springmon-microservices
+3. Select all projects found
+
+## Run Configurations
+
+### IntelliJ IDEA / Eclipse
+- AuthServiceApplication (auth-service module)
+- UserServiceApplication (user-service module)  
+- GatewayServiceApplication (gateway-service module)
+
+### VS Code
+Use Spring Boot Dashboard or Maven commands:
+- mvn spring-boot:run (in each module directory)
+
+## Database Configuration
+Ensure PostgreSQL is configured with:
+- Database: springmon_auth, springmon_user
+- User: springmon_user
+- Password: springmon_password
