@@ -56,17 +56,15 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
-        
+        ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts        
     - name: Deploy to VM spring-micro directory
       run: |
         echo "Deploying to ~/spring-micro directory on VM..."
-        
         # Ensure spring-micro directory exists and sync all files
         ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "mkdir -p ~/spring-micro"
         
-        # Sync all project files including compiled JARs
-        rsync -avz --delete ./ ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:~/spring-micro/
+        # Sync all project files including compiled JARs (without delete to preserve history)
+        rsync -avz ./ ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:~/spring-micro/
         
         echo "Files synchronized to VM"
         

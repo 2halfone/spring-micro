@@ -1,5 +1,17 @@
--- SpringMon Auth Database Initialization
--- Creazione schema per sistema di autenticazione
+-- SpringMon Database Initialization
+-- Creazione schema per sistema di autenticazione e gestione utenti
+
+-- Script di creazione database springmon_user
+-- Il database principale 'springmon' viene creato automaticamente da POSTGRES_DB
+
+-- Connessione al database template1 per creare springmon_user
+\c template1;
+
+-- Creazione database springmon_user se non esiste (con controllo errore)
+SELECT 'CREATE DATABASE springmon_user' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'springmon_user') \gexec
+
+-- Connessione al database principale springmon
+\c springmon;
 
 -- Tabella utenti
 CREATE TABLE IF NOT EXISTS users (
@@ -76,7 +88,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER IF NOT EXISTS update_users_updated_at 
+CREATE OR REPLACE TRIGGER update_users_updated_at 
     BEFORE UPDATE ON users 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
@@ -89,3 +101,56 @@ COMMENT ON TABLE refresh_tokens IS 'Token di refresh per JWT';
 
 -- Pulizia automatica token scaduti (da schedulare)
 -- DELETE FROM refresh_tokens WHERE expiry_date < CURRENT_TIMESTAMP;
+
+-- ==================================================
+-- CONFIGURAZIONE DATABASE USER SERVICE
+-- ==================================================
+
+-- Connessione al database springmon_user per user service
+\c springmon_user;
+
+-- Creazione schema utenti per user service (semplificato)
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Creazione funzione aggiornamento timestamp per user service
+CREATE OR REPLACE FUNCTION update_updated_at_column_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Trigger per aggiornamento automatico timestamp su user service
+CREATE OR REPLACE TRIGGER update_users_updated_at_user
+    BEFORE UPDATE ON users 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column_user();
+
+-- Indici per performance su user service
+CREATE INDEX IF NOT EXISTS idx_users_username_user ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email_user ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_active_user ON users(is_active);
+
+-- Dati di test per user service
+INSERT INTO users (username, email, first_name, last_name) VALUES 
+('testuser', 'test@springmon.local', 'Test', 'User'),
+('admin_user', 'admin@springmon.local', 'Admin', 'User')
+ON CONFLICT (username) DO NOTHING;
+
+-- Commenti user service
+COMMENT ON TABLE users IS 'Tabella utenti per gestione dati SpringMon User Service';
+
+-- Grant privilegi al database user service
+GRANT ALL PRIVILEGES ON DATABASE springmon_user TO springmon_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO springmon_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO springmon_user;

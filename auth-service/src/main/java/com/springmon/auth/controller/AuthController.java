@@ -120,13 +120,26 @@ public class AuthController {
             error.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
+    }    @GetMapping("/health")
+    public ResponseEntity<?> healthCheck() {
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "UP");
+        response.put("service", "auth-service");
+        return ResponseEntity.ok(response);
     }
+}
 
+// Nuovo controller per endpoint globali fuori da /api/auth
+@RestController
+@RequestMapping("/api")
+class AuthGlobalController {
+    
     @GetMapping("/health")
     public ResponseEntity<?> healthCheck() {
         Map<String, String> response = new HashMap<>();
         response.put("status", "UP");
         response.put("service", "auth-service");
+        response.put("timestamp", String.valueOf(System.currentTimeMillis()));
         return ResponseEntity.ok(response);
     }
 }
