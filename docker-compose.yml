@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # Gateway Service - SOLO PUNTO DI ACCESSO ESTERNO
+  gateway-service:
+    build: ./gateway-service
+    container_name: springmon-gateway
+    ports:
+      - "8080:8080"  # UNICA PORTA ESPOSTA ESTERNAMENTE
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - AUTH_SERVICE_URL=http://auth-service:8081
+    depends_on:
+      - auth-service
+    networks:
+      - springmon-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Auth Service - SERVIZIO INTERNO (NO PORTE ESTERNE)
+  auth-service:
+    build: ./auth-service
+    container_name: springmon-auth
+    # NO PORTS EXPOSED - Solo comunicazione interna
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/springmon_auth
+      - DATABASE_USERNAME=springmon_user
+      - DATABASE_PASSWORD=springmon_secure_password
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=springmon_jwt_secret_key_2024_very_secure_random_string
+      - JWT_EXPIRATION=3600000
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - springmon-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL - DATABASE INTERNO (NO PORTE ESTERNE)
+  postgres:
+    image: postgres:15-alpine
+    container_name: springmon-postgres
+    # NO PORTS EXPOSED - Solo comunicazione interna
+    environment:
+      - POSTGRES_DB=springmon_auth
+      - POSTGRES_USER=springmon_user
+      - POSTGRES_PASSWORD=springmon_secure_password
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - springmon-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U springmon_user -d springmon_auth"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis - CACHE INTERNO (NO PORTE ESTERNE)
+  redis:
+    image: redis:7-alpine
+    container_name: springmon-redis
+    # NO PORTS EXPOSED - Solo comunicazione interna
+    command: redis-server --requirepass springmon_redis_password
+    volumes:
+      - redis_data:/data
+    networks:
+      - springmon-internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# NETWORK INTERNO - ZERO ESPOSIZIONE ESTERNA
+networks:
+  springmon-internal:
+    driver: bridge
+    internal: false  # Permette accesso internet per download dipendenze
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+# VOLUMI PERSISTENTI
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
