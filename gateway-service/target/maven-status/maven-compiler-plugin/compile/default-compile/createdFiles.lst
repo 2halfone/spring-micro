@@ -1,2 +1,5 @@
-com\springmon\gateway\GatewayServiceApplication.class
 com\springmon\gateway\config\SecurityConfig.class
+com\springmon\gateway\controller\GatewayController.class
+com\springmon\gateway\GatewayServiceApplication.class
+com\springmon\gateway\service\AuthProxyService.class
+com\springmon\gateway\service\JwtValidationService.class

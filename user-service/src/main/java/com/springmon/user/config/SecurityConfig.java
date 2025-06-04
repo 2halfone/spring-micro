@@ -1,7 +1,5 @@
-package com.springmon.gateway.config;
+package com.springmon.user.config;
 
-import com.springmon.gateway.filter.JwtAuthenticationFilter;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,52 +13,59 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 
+/**
+ * Configurazione Spring Security per User Service
+ * Implementa autenticazione JWT stateless e protezione CSRF
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    @Autowired
-    private JwtAuthenticationEntryPoint authenticationEntryPoint;
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter();
+    }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {        http
-            // Disabilita CSRF per API REST
+    public JwtAuthenticationEntryPoint authenticationEntryPoint() {
+        return new JwtAuthenticationEntryPoint();
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            // Disabilita CSRF per API REST stateless
             .csrf(csrf -> csrf.disable())
             
             // Configurazione CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             
             // Entry point per errori di autenticazione
-            .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint()))
             
             // Configurazione autorizzazioni
             .authorizeHttpRequests(authz -> authz
-                // Endpoint pubblici
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/health").permitAll()
-                .requestMatchers("/api/info").permitAll()
+                // Endpoint di salute pubblici
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/api/health").permitAll()
                 
-                // Tutti gli altri endpoint richiedono autenticazione
+                // Tutti gli altri endpoint richiedono autenticazione JWT
                 .anyRequest().authenticated()
             )
             
-            // Sessioni stateless (JWT)
+            // Sessioni stateless (JWT based)
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             
-            // Disabilita form login
+            // Disabilita form login (non necessario per microservizi)
             .formLogin(form -> form.disable())
             
-            // Disabilita HTTP Basic
+            // Disabilita HTTP Basic (usiamo JWT)
             .httpBasic(basic -> basic.disable())
             
             // Aggiungi il filtro JWT prima dell'autenticazione standard
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
