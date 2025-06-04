@@ -91,7 +91,8 @@ services:
     build: ./gateway-service
     container_name: springmon-gateway
     ports:
-      - "8080:8080"  # ONLY PORT EXPOSED EXTERNALLY    environment:
+      - "8080:8080"  # ONLY PORT EXPOSED EXTERNALLY
+    environment:
       - SPRING_PROFILES_ACTIVE=docker
       - AUTH_SERVICE_URL=http://auth-service:8082
       - USER_SERVICE_URL=http://user-service:8083
