@@ -3,7 +3,7 @@
 Write-Host "SpringMon Microservices - Final Compilation Test" -ForegroundColor Cyan
 Write-Host "=================================================" -ForegroundColor Cyan
 
-$baseDir = "c:/Users/mini/Desktop/Visual code/spring/newspring/spring-boot-template/springmon-microservices"
+$baseDir = Get-Location
 $allPassed = $true
 
 function Test-ServiceCompilation {
