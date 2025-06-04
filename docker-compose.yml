@@ -38,7 +38,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
   # Auth Service - INTERNAL ONLY (Port 8082)
   auth-service:
     build: ./auth-service
@@ -60,11 +59,10 @@ services:
       - springmon-internal
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-
   # User Service - INTERNAL ONLY (Port 8083)  
   user-service:
     build: ./user-service
@@ -83,7 +81,7 @@ services:
       - springmon-internal
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -106,10 +104,9 @@ services:
       user-service:
         condition: service_healthy
     networks:
-      - springmon-internal
-    restart: unless-stopped
+      - springmon-internal    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
