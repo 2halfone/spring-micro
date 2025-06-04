@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build:
+    name: 🔨 Build Services
     runs-on: ubuntu-latest
     
     steps:
@@ -19,53 +20,157 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           
-      - name: 🔨 Build Services
+      - name: 🔨 Build Gateway Service
         run: |
           echo "🔨 Building Gateway Service..."
           cd gateway-service
           mvn clean package -DskipTests
           
+      - name: 🔨 Build Auth Service
+        run: |
           echo "🔨 Building Auth Service..."
-          cd ../auth-service
+          cd auth-service
           mvn clean package -DskipTests
           
+      - name: 🔨 Build User Service
+        run: |
           echo "🔨 Building User Service..."
-          cd ../user-service
+          cd user-service
           mvn clean package -DskipTests
           
-          echo "✅ All services built successfully!"
+      - name: 📦 Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: springmon-services
+          path: |
+            gateway-service/target/*.jar
+            auth-service/target/*.jar
+            user-service/target/*.jar
+            docker-compose.yml
+            gateway-service/Dockerfile
+            auth-service/Dockerfile
+            user-service/Dockerfile
+            gateway-service/src/main/resources/application.properties
+            auth-service/src/main/resources/application*.properties
+            user-service/src/main/resources/application.properties
+          retention-days: 1
+
+  deploy:
+    name: 🚀 Deploy to VM
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: 📥 Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: springmon-services
           
-      - name: 🚀 Deploy to VM
+      - name: 🔑 Setup SSH Key & Test Connection
         run: |
           echo "🔑 Setting up SSH key..."
-          echo "${{ secrets.DEPLOY_KEY }}" > key.pem
+          
+          # Create SSH key file with proper format and remove Windows line endings
+          echo "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' > key.pem
+          chmod 600 key.pem
+          
+          # Validate key format
+          if ! ssh-keygen -l -f key.pem > /dev/null 2>&1; then
+            echo "❌ Invalid SSH key format in secrets.DEPLOY_KEY"
+            echo "Make sure the SSH private key is properly formatted"
+            exit 1
+          fi
+          
+          # Test SSH connection with detailed output
+          echo "🔍 Testing SSH connection to ${{ secrets.DEPLOY_HOST }}..."
+          ssh -i key.pem -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "echo 'SSH connection successful'; whoami; pwd"
+          
+      - name: 🏗️ Prepare VM Environment
+        run: |
+          echo "🔑 Setting up SSH key..."
+          echo "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' > key.pem
+          chmod 600 key.pem
+          
+          echo "🏗️ Preparing VM environment..."
+          ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
+            # Create directory if not exists
+            sudo mkdir -p /opt/springmon
+            sudo chown ${{ secrets.DEPLOY_USER }}:${{ secrets.DEPLOY_USER }} /opt/springmon
+            
+            # Stop any existing containers
+            cd /opt/springmon || true
+            docker-compose down --remove-orphans || true
+            
+            # Clean up old files
+            rm -rf /opt/springmon/* || true
+            
+            echo 'VM environment prepared successfully'
+          "
+          
+      - name: 📦 Transfer Files to VM
+        run: |
+          echo "🔑 Setting up SSH key..."
+          echo "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' > key.pem
           chmod 600 key.pem
           
           echo "📦 Transferring files to VM..."
-          # Copy docker-compose and source code
+          
+          # Transfer docker-compose first
           scp -i key.pem -o StrictHostKeyChecking=no docker-compose.yml ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
+          
+          # Transfer each service directory
           scp -i key.pem -o StrictHostKeyChecking=no -r gateway-service ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
           scp -i key.pem -o StrictHostKeyChecking=no -r auth-service ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
           scp -i key.pem -o StrictHostKeyChecking=no -r user-service ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
-          scp -i key.pem -o StrictHostKeyChecking=no -r docker ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
+          
+          # Transfer docker init files if they exist
+          if [ -d "docker" ]; then
+            scp -i key.pem -o StrictHostKeyChecking=no -r docker ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/springmon/
+          fi
+          
+          echo "✅ All files transferred successfully"
+          
+      - name: 🐳 Deploy Services
+        run: |
+          echo "🔑 Setting up SSH key..."
+          echo "${{ secrets.DEPLOY_KEY }}" | tr -d '\r' > key.pem
+          chmod 600 key.pem
           
           echo "🐳 Deploying services on VM..."
           ssh -i key.pem -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
-            cd /opt/springmon && 
-            docker-compose down --remove-orphans || true &&
-            docker-compose up -d --build &&
-            echo '⏳ Waiting for services to start...' &&
-            sleep 60 &&
-            docker-compose ps          "
+            cd /opt/springmon
+            
+            # Show current directory contents
+            echo 'Files in deployment directory:'
+            ls -la
+            
+            # Deploy with docker-compose
+            docker-compose up -d --build
+            
+            echo '⏳ Waiting for services to start...'
+            sleep 60
+            
+            # Show container status
+            echo 'Container status:'
+            docker-compose ps
+            
+            # Show logs for troubleshooting
+            echo 'Container logs:'
+            docker-compose logs --tail=20
+          "
           
       - name: 🏥 Health Check
         run: |
-          echo "🏥 Performing health checks on VM: 34.140.122.146..."
+          echo "🏥 Performing health checks on VM: ${{ secrets.DEPLOY_HOST }}..."
           sleep 30
           
           # Test Gateway Service
+          echo "Testing Gateway Service health endpoint..."
           for i in {1..10}; do
-            if curl -f http://34.140.122.146:8080/api/health; then
+            if curl -f http://${{ secrets.DEPLOY_HOST }}:8080/api/health; then
               echo "✅ Gateway Service is healthy"
               break
             fi
@@ -73,15 +178,18 @@ jobs:
             sleep 10
           done
           
-          # Test protected endpoint (should return 401)
-          if curl -s -o /dev/null -w "%{http_code}" http://34.140.122.146:8080/api/users | grep -q "401"; then
+          # Test that protected endpoints return 401 (security check)
+          echo "Testing security - protected endpoint should return 401..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.DEPLOY_HOST }}:8080/api/users)
+          if [ "$HTTP_CODE" = "401" ]; then
             echo "✅ Protected endpoint correctly secured"
           else
-            echo "⚠️ Protected endpoint security check failed"
+            echo "⚠️ Protected endpoint returned: $HTTP_CODE (expected 401)"
           fi
           
           # Final verification
-          curl -f http://34.140.122.146:8080/api/health || exit 1
+          echo "Final health check..."
+          curl -f http://${{ secrets.DEPLOY_HOST }}:8080/api/health || exit 1
           echo "🎉 Deployment successful!"
           
       - name: 📊 Deployment Summary
@@ -93,3 +201,8 @@ jobs:
           echo "📅 Deploy Time: $(date)"
           echo "🔗 Commit: ${{ github.sha }}"
           echo "🚀 Status: ${{ job.status }}"
+          echo ""
+          echo "📋 Available Endpoints:"
+          echo "- Health: http://${{ secrets.DEPLOY_HOST }}:8080/api/health"
+          echo "- Login: http://${{ secrets.DEPLOY_HOST }}:8080/api/auth/login"
+          echo "- Register: http://${{ secrets.DEPLOY_HOST }}:8080/api/auth/register"
