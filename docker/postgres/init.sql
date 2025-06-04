@@ -1,16 +1,13 @@
 -- SpringMon Database Initialization
--- Creazione schema per sistema di autenticazione e gestione utenti
+-- Creates schema for authentication and user management system
 
--- Script di creazione database springmon_user
--- Il database principale 'springmon' viene creato automaticamente da POSTGRES_DB
+-- Create springmon_user database if it doesn't exist
+-- Note: The main 'springmon' database is created automatically via POSTGRES_DB
 
--- Connessione al database template1 per creare springmon_user
-\c template1;
+-- First, create the springmon_user database
+CREATE DATABASE springmon_user;
 
--- Creazione database springmon_user se non esiste (con controllo errore)
-SELECT 'CREATE DATABASE springmon_user' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'springmon_user') \gexec
-
--- Connessione al database principale springmon
+-- Connect to the main springmon database for auth tables
 \c springmon;
 
 -- Tabella utenti

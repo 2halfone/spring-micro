@@ -105,7 +105,7 @@ if (-not $mavenAvailable) {
     Write-Host "   Opzione 3: GitHub Actions compilerà automaticamente durante il deploy" -ForegroundColor Gray
     Write-Host ""
 }
-Write-Host "1. Commit delle modifiche: git add . && git commit -m 'Update configurations'" -ForegroundColor Gray
+Write-Host "1. Commit delle modifiche: git add . ; git commit -m 'Update configurations'" -ForegroundColor Gray
 Write-Host "2. Push al repository: git push origin main" -ForegroundColor Gray
 Write-Host "3. GitHub Actions compilerà e deploierà automaticamente su VM" -ForegroundColor Gray
 Write-Host ""
