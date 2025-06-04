@@ -95,8 +95,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - AUTH_SERVICE_URL=http://auth-service:8082
-      - USER_SERVICE_URL=http://user-service:8083
-      - JWT_SECRET=${JWT_SECRET:-springmon_jwt_secret_key_2024_very_secure_random_string}
+      - USER_SERVICE_URL=http://user-service:8083      - JWT_SECRET=${JWT_SECRET:-springmon_jwt_secret_key_2024_very_secure_random_string}
       - SERVER_PORT=8080
     depends_on:
       auth-service:
@@ -104,7 +103,8 @@ services:
       user-service:
         condition: service_healthy
     networks:
-      - springmon-internal    restart: unless-stopped
+      - springmon-internal
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
