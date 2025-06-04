@@ -112,3 +112,5 @@ jobs:
         curl -f http://${{ secrets.DEPLOY_HOST }}:8080/api/health || echo "Gateway health check failed"
         
         echo "🎉 Deployment complete!"
+
+
