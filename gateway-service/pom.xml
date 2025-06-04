@@ -92,11 +92,13 @@
         </dependencies>
     </dependencyManagement>
 
-    <build>
-        <plugins>
+    <build>        <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.springmon.gateway.GatewayServiceApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
