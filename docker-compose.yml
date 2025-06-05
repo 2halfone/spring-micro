@@ -1,4 +1,4 @@
-version: '3.8'
+﻿version: '3.8'
 
 services:
   # PostgreSQL Database - INTERNAL ONLY
@@ -38,6 +38,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
   # Auth Service - INTERNAL ONLY (Port 8082)
   auth-service:
     build: ./auth-service
@@ -56,12 +57,14 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - springmon-internal    restart: unless-stopped
+      - springmon-internal
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "sh", "-c", "exec 3<>/dev/tcp/localhost/8082 && echo -e 'GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\":\"UP\"'"]
       interval: 30s
       timeout: 10s
       retries: 3
+
   # User Service - INTERNAL ONLY (Port 8083)  
   user-service:
     build: ./user-service
@@ -77,7 +80,8 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - springmon-internal    restart: unless-stopped
+      - springmon-internal
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "sh", "-c", "exec 3<>/dev/tcp/localhost/8083 && echo -e 'GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\":\"UP\"'"]
       interval: 30s
@@ -102,7 +106,8 @@ services:
       user-service:
         condition: service_healthy
     networks:
-      - springmon-internal    restart: unless-stopped
+      - springmon-internal
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "sh", "-c", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\":\"UP\"'"]
       interval: 30s
